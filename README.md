@@ -13,6 +13,11 @@ Aplicación web desarrollada con Streamlit para el análisis y visualización de
 - 📈 Gráficos interactivos con Plotly y Matplotlib
 - 📋 Estadísticas descriptivas
 - ℹ️ Información detallada del dataset
+- 🧮 Cálculo de esfuerzos verticales con metodología de Boussinesq
+  - Sobrecarga rectangular con superposición de cargas puntuales
+  - Visualización interactiva (cortes X-Z, Y-Z, perfiles de profundidad)
+  - Gestión de cache en disco y memoria
+  - Exportación de resultados a PDF
 
 ## Instalación
 
@@ -78,9 +83,15 @@ Geotechnical_Tools/
 ├── Dockerfile             # Configuración Docker
 ├── README.md              # Este archivo
 ├── .gitignore            # Archivos ignorados por Git
+├── Tools/                # Módulo de cálculos geotécnicos
+│   ├── __init__.py
+│   ├── Tools.py          # Funciones de Boussinesq
+│   └── cache/            # Cache de resultados
 ├── tests/                # Tests del proyecto
 │   ├── __init__.py
-│   └── test_app.py
+│   ├── test_app.py
+│   ├── test_import.py
+│   └── test_tools.py
 └── .github/
     └── workflows/
         └── ci.yml        # Configuración CI/CD
@@ -92,6 +103,9 @@ Geotechnical_Tools/
 - **Pandas**: Manipulación de datos
 - **Matplotlib**: Gráficos estáticos
 - **Plotly**: Gráficos interactivos
+- **NumPy**: Cálculos numéricos
+- **SciPy**: Interpolación y análisis científico
+- **FPDF2**: Generación de reportes PDF
 - **Pytest**: Framework de testing
 - **Flake8**: Linter de código
 
@@ -114,3 +128,43 @@ Las contribuciones son bienvenidas. Por favor:
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
+
+## Uso de la Herramienta de Boussinesq
+
+### Metodología
+
+La herramienta de Boussinesq calcula esfuerzos verticales (σz) generados por una sobrecarga rectangular sobre un medio elástico semi-infinito. Utiliza la solución de Boussinesq para cargas puntuales con superposición de subelementos.
+
+### Parámetros de Entrada
+
+- **q**: Sobrecarga superficial (kPa)
+- **Lx, Ly**: Dimensiones de la carga rectangular (m)
+- **Xmin, Xmax, Ymin, Ymax**: Límites del dominio de cálculo (m)
+- **Zmax**: Profundidad máxima de análisis (m)
+- **Nx, Ny, Nz**: Resolución de la malla de cálculo
+
+### Visualizaciones Disponibles
+
+1. **Corte X-Z**: Contorno de esfuerzos en un plano vertical paralelo al eje X
+2. **Corte Y-Z**: Contorno de esfuerzos en un plano vertical paralelo al eje Y
+3. **Perfil en profundidad**: Variación de σz con la profundidad en un punto (x,y)
+
+### Gestión de Cache
+
+Los resultados pueden guardarse en disco (formato .npz comprimido) para reutilización posterior:
+- **Guardar cache**: Almacena X, Y, Z, sigma en `Tools/cache/`
+- **Cargar cache**: Recupera resultados previamente calculados
+
+### Exportación PDF
+
+Genera un reporte PDF que incluye:
+- Resumen de parámetros de entrada
+- Lista de gráficas generadas
+- Información sobre las visualizaciones creadas
+
+### Notas de Rendimiento
+
+- Costo computacional: O(Nx × Ny × Nz × mx × my)
+- Para mallas grandes (>100,000 puntos), considerar reducir resolución
+- Los cálculos se cachean automáticamente en memoria con `@st.cache_data`
+- Discretización adaptativa de subelementos: mx = my = min(40, max(4, Nx/2))
