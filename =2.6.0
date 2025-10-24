@@ -1,0 +1,21 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting scipy
+  Downloading scipy-1.16.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata
+     - 62.0 kB 248.4 MB/s 0:00:00
+Collecting fpdf2
+  Downloading fpdf2-2.8.4-py2.py3-none-any.whl.metadata
+     - 72.7 kB 256.9 MB/s 0:00:00
+Requirement already satisfied: numpy<2.6,>=1.25.2 in /home/runner/.local/lib/python3.12/site-packages (from scipy) (2.3.4)
+Collecting defusedxml (from fpdf2)
+  Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata
+     - 32.5 kB 275.4 MB/s 0:00:00
+Requirement already satisfied: Pillow!=9.2.*,>=8.0.0 in /home/runner/.local/lib/python3.12/site-packages (from fpdf2) (11.3.0)
+Requirement already satisfied: fonttools>=4.34.0 in /home/runner/.local/lib/python3.12/site-packages (from fpdf2) (4.60.1)
+Downloading scipy-1.16.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+   / 35.7 MB 236.9 MB/s 0:00:00
+Downloading fpdf2-2.8.4-py2.py3-none-any.whl
+   - 251.7 kB 98.5 MB/s 0:00:00
+Downloading defusedxml-0.7.1-py2.py3-none-any.whl
+   - 25.6 kB 183.9 MB/s 0:00:00
+Installing collected packages: scipy, defusedxml, fpdf2
+Successfully installed defusedxml-0.7.1 fpdf2-2.8.4 scipy-1.16.2
