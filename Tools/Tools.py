@@ -97,7 +97,9 @@ def compute_rectangular_boussinesq(
     X = np.linspace(Xmin, Xmax, Nx)
     Y = np.linspace(Ymin, Ymax, Ny)
     # Start Z from a small offset to avoid singularity at z=0
-    Z = np.linspace(0.01, Zmax, Nz)
+    # Use 1% of Zmax or 0.1m, whichever is larger
+    z_start = max(0.1, Zmax * 0.01)
+    Z = np.linspace(z_start, Zmax, Nz)
     
     # Determine subelement discretization
     # Use adaptive discretization based on grid resolution
