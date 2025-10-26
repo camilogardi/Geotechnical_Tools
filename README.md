@@ -78,7 +78,8 @@ flake8 . --max-line-length=127
 
 ```
 Geotechnical_Tools/
-├── app.py                  # Aplicación principal Streamlit
+├── app.py                  # Aplicación principal Streamlit (interfaz UI)
+├── calculations.py         # Funciones de cálculo y visualización
 ├── requirements.txt        # Dependencias del proyecto
 ├── Dockerfile             # Configuración Docker
 ├── README.md              # Este archivo
@@ -90,12 +91,38 @@ Geotechnical_Tools/
 ├── tests/                # Tests del proyecto
 │   ├── __init__.py
 │   ├── test_app.py
+│   ├── test_calculations.py
 │   ├── test_import.py
 │   └── test_tools.py
 └── .github/
     └── workflows/
         └── ci.yml        # Configuración CI/CD
 ```
+
+## Organización del Código
+
+El proyecto sigue una arquitectura de separación de responsabilidades:
+
+### `app.py` - Interfaz de Usuario
+Contiene exclusivamente el código de la interfaz Streamlit:
+- Configuración de la página
+- Widgets de entrada (sliders, botones, etc.)
+- Orquestación de la UI
+- Manejo de estado de la sesión
+- Renderizado de resultados
+
+### `calculations.py` - Lógica de Cálculo
+Módulo de funciones puras para cálculos y visualizaciones:
+- Generación de hashes de caché
+- Cálculos de Boussinesq (wrapper con caché)
+- Interpolación de valores
+- Creación de gráficos (X-Z, Y-Z, perfiles)
+- Generación de reportes PDF
+
+Esta separación mejora:
+- ✅ **Testabilidad**: funciones de cálculo independientes
+- ✅ **Mantenibilidad**: lógica clara y organizada
+- ✅ **Reutilización**: funciones pueden usarse en otros contextos
 
 ## Tecnologías
 

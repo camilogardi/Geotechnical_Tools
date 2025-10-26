@@ -7,196 +7,28 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
-import hashlib
-from scipy.interpolate import interpn
-from fpdf import FPDF
-from Tools import compute_rectangular_boussinesq, save_cache, load_cache
-
-
-def get_cache_hash(q, Lx, Ly, Xmin, Xmax, Ymin, Ymax, Zmax, Nx, Ny, Nz):
-    """Generate a hash for cache file naming based on parameters"""
-    params_str = f"{q}_{Lx}_{Ly}_{Xmin}_{Xmax}_{Ymin}_{Ymax}_{Zmax}_{Nx}_{Ny}_{Nz}"
-    return hashlib.md5(params_str.encode()).hexdigest()[:8]
-
-
-@st.cache_data
-def compute_boussinesq_cached(q, Lx, Ly, Xmin, Xmax, Ymin, Ymax, Zmax, Nx, Ny, Nz):
-    """Cached wrapper for compute_rectangular_boussinesq"""
-    return compute_rectangular_boussinesq(q, Lx, Ly, Xmin, Xmax, Ymin, Ymax, Zmax, Nx, Ny, Nz)
-
-
-def interpolate_value(X, Y, Z, sigma, x_point, y_point, z_point):
-    """Interpolate sigma value at a specific point using trilinear interpolation"""
-    # Create points array for interpolation
-    points = (Z, Y, X)
-    
-    # Query point
-    xi = np.array([[z_point, y_point, x_point]])
-    
-    # Interpolate
-    result = interpn(points, sigma, xi, method='linear', bounds_error=False, fill_value=0)
-    return result[0]
-
-
-def create_xz_plot(X, Y, Z, sigma, y_val):
-    """Create X-Z contour plot at a specific Y value"""
-    # Find nearest Y index
-    y_idx = np.argmin(np.abs(Y - y_val))
-    actual_y = Y[y_idx]
-    
-    # Extract X-Z slice
-    sigma_xz = sigma[:, y_idx, :]  # shape (Nz, Nx)
-    
-    # Create meshgrid for plotting
-    X_grid, Z_grid = np.meshgrid(X, Z)
-    
-    # Create plotly contour plot
-    fig = go.Figure(data=go.Contour(
-        x=X,
-        y=Z,
-        z=sigma_xz,
-        colorscale='Viridis',
-        colorbar=dict(title='σz (kPa)'),
-        contours=dict(
-            showlabels=True,
-            labelfont=dict(size=10)
-        )
-    ))
-    
-    fig.update_layout(
-        title=f'Corte X-Z en Y = {actual_y:.2f} m',
-        xaxis_title='X (m)',
-        yaxis_title='Profundidad Z (m)',
-        yaxis=dict(autorange='reversed'),  # Depth increases downward
-        height=500
-    )
-    
-    return fig
-
-
-def create_yz_plot(X, Y, Z, sigma, x_val):
-    """Create Y-Z contour plot at a specific X value"""
-    # Find nearest X index
-    x_idx = np.argmin(np.abs(X - x_val))
-    actual_x = X[x_idx]
-    
-    # Extract Y-Z slice
-    sigma_yz = sigma[:, :, x_idx]  # shape (Nz, Ny)
-    
-    # Create plotly contour plot
-    fig = go.Figure(data=go.Contour(
-        x=Y,
-        y=Z,
-        z=sigma_yz,
-        colorscale='Viridis',
-        colorbar=dict(title='σz (kPa)'),
-        contours=dict(
-            showlabels=True,
-            labelfont=dict(size=10)
-        )
-    ))
-    
-    fig.update_layout(
-        title=f'Corte Y-Z en X = {actual_x:.2f} m',
-        xaxis_title='Y (m)',
-        yaxis_title='Profundidad Z (m)',
-        yaxis=dict(autorange='reversed'),  # Depth increases downward
-        height=500
-    )
-    
-    return fig
-
-
-def create_depth_profile_plot(X, Y, Z, sigma, x_point, y_point):
-    """Create depth profile plot at a specific (x, y) location"""
-    # Find nearest X and Y indices
-    x_idx = np.argmin(np.abs(X - x_point))
-    y_idx = np.argmin(np.abs(Y - y_point))
-    actual_x = X[x_idx]
-    actual_y = Y[y_idx]
-    
-    # Extract depth profile
-    sigma_profile = sigma[:, y_idx, x_idx]
-    
-    # Create plotly line plot
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=sigma_profile,
-        y=Z,
-        mode='lines+markers',
-        name='σz vs Profundidad',
-        line=dict(color='blue', width=2),
-        marker=dict(size=6)
-    ))
-    
-    fig.update_layout(
-        title=f'Perfil de Esfuerzo en X={actual_x:.2f} m, Y={actual_y:.2f} m',
-        xaxis_title='σz (kPa)',
-        yaxis_title='Profundidad Z (m)',
-        yaxis=dict(autorange='reversed'),  # Depth increases downward
-        height=500,
-        showlegend=True
-    )
-    
-    return fig
-
-
-def generate_pdf_report(params, plots_config, X, Y, Z, sigma):
-    """Generate PDF report with parameters and plots"""
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Title
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Reporte: Cálculo de Esfuerzos Verticales (Boussinesq)', ln=True, align='C')
-    pdf.ln(10)
-    
-    # Parameters table
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, 'Parámetros de Entrada:', ln=True)
-    pdf.set_font('Arial', '', 10)
-    
-    params_text = [
-        f"Sobrecarga q: {params['q']} kPa",
-        f"Dimensiones carga: Lx = {params['Lx']} m, Ly = {params['Ly']} m",
-        f"Dominio X: [{params['Xmin']}, {params['Xmax']}] m",
-        f"Dominio Y: [{params['Ymin']}, {params['Ymax']}] m",
-        f"Profundidad máxima: {params['Zmax']} m",
-        f"Resolución malla: Nx={params['Nx']}, Ny={params['Ny']}, Nz={params['Nz']}"
-    ]
-    
-    for text in params_text:
-        pdf.cell(0, 6, text, ln=True)
-    
-    pdf.ln(10)
-    
-    # Plots section
-    if plots_config:
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 10, 'Gráficas Generadas:', ln=True)
-        pdf.set_font('Arial', '', 10)
-        
-        for i, plot_cfg in enumerate(plots_config):
-            plot_type = plot_cfg['type']
-            pdf.cell(0, 6, f"{i+1}. {plot_type}", ln=True)
-    
-    # Return PDF as bytes
-    return bytes(pdf.output())
+from Tools import save_cache, load_cache
+from calculations import (
+    get_cache_hash,
+    compute_boussinesq_cached,
+    create_xz_plot,
+    create_yz_plot,
+    create_depth_profile_plot,
+    generate_pdf_report
+)
 
 
 def boussinesq_interface():
     """Render Boussinesq calculation interface in sidebar and main content"""
     st.sidebar.markdown("---")
     st.sidebar.subheader("⚙️ Boussinesq (Rectángulo)")
-    
+
     # Initialize session state
     if 'boussinesq_data' not in st.session_state:
         st.session_state.boussinesq_data = None
     if 'plots' not in st.session_state:
         st.session_state.plots = []
-    
+
     # Input parameters
     with st.sidebar.expander("Parámetros de Carga", expanded=True):
         q = st.number_input("Sobrecarga q (kPa)", min_value=0.0, value=100.0, step=10.0)
@@ -205,7 +37,7 @@ def boussinesq_interface():
             Lx = st.number_input("Lx (m)", min_value=0.1, value=10.0, step=1.0)
         with col2:
             Ly = st.number_input("Ly (m)", min_value=0.1, value=10.0, step=1.0)
-    
+
     with st.sidebar.expander("Dominio de Cálculo", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -215,7 +47,7 @@ def boussinesq_interface():
             Xmax = st.number_input("Xmax (m)", value=20.0, step=1.0)
             Ymax = st.number_input("Ymax (m)", value=20.0, step=1.0)
         Zmax = st.number_input("Profundidad máx Z (m)", min_value=0.1, value=30.0, step=5.0)
-    
+
     with st.sidebar.expander("Resolución de Malla", expanded=True):
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -224,11 +56,11 @@ def boussinesq_interface():
             Ny = st.number_input("Ny", min_value=2, max_value=200, value=41, step=5)
         with col3:
             Nz = st.number_input("Nz", min_value=2, max_value=200, value=31, step=5)
-    
+
     # Calculation buttons
     st.sidebar.markdown("---")
     col1, col2 = st.sidebar.columns(2)
-    
+
     with col1:
         if st.button("🔄 Calcular", use_container_width=True):
             with st.spinner("Calculando esfuerzos..."):
@@ -244,18 +76,18 @@ def boussinesq_interface():
                     st.sidebar.success("✅ Cálculo completado")
                 except Exception as e:
                     st.sidebar.error(f"❌ Error: {str(e)}")
-    
+
     with col2:
         if st.button("🗑️ Limpiar", use_container_width=True):
             st.session_state.boussinesq_data = None
             st.session_state.plots = []
             st.rerun()
-    
+
     # Cache management
     with st.sidebar.expander("💾 Gestión de Cache", expanded=False):
-        cache_name = st.text_input("Nombre de cache", 
+        cache_name = st.text_input("Nombre de cache",
                                    value=f"boussinesq_{get_cache_hash(q, Lx, Ly, Xmin, Xmax, Ymin, Ymax, Zmax, Nx, Ny, Nz)}")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Guardar", use_container_width=True):
@@ -273,7 +105,7 @@ def boussinesq_interface():
                         st.error(f"Error al guardar: {str(e)}")
                 else:
                     st.warning("No hay datos para guardar")
-        
+
         with col2:
             if st.button("Cargar", use_container_width=True):
                 cache_path = f"Tools/cache/{cache_name}.npz"
@@ -290,14 +122,14 @@ def boussinesq_interface():
                     st.error(f"Archivo no encontrado: {cache_path}")
                 except Exception as e:
                     st.error(f"Error al cargar: {str(e)}")
-    
+
     # Main content area
     if st.session_state.boussinesq_data is not None:
         data = st.session_state.boussinesq_data
         X, Y, Z, sigma = data['X'], data['Y'], data['Z'], data['sigma']
-        
+
         st.header("📊 Resultados de Boussinesq")
-        
+
         # Summary statistics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -308,56 +140,56 @@ def boussinesq_interface():
             st.metric("Puntos totales", f"{Nx*Ny*Nz:,}")
         with col4:
             st.metric("Tamaño malla", f"{Nx}×{Ny}×{Nz}")
-        
+
         st.markdown("---")
-        
+
         # Plot controls
         st.subheader("📈 Visualización")
-        
+
         # Add plot controls
-        plot_type = st.selectbox("Tipo de gráfica", 
+        plot_type = st.selectbox("Tipo de gráfica",
                                  ["Corte X-Z", "Corte Y-Z", "Perfil en profundidad"])
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         if plot_type == "Corte X-Z":
             with col1:
-                y_val = st.number_input("Valor de Y (m)", 
-                                       min_value=float(Y.min()), 
-                                       max_value=float(Y.max()), 
-                                       value=0.0)
+                y_val = st.number_input("Valor de Y (m)",
+                                        min_value=float(Y.min()),
+                                        max_value=float(Y.max()),
+                                        value=0.0)
             with col2:
                 if st.button("➕ Agregar gráfica"):
                     st.session_state.plots.append({'type': plot_type, 'y_val': y_val})
                     st.rerun()
-        
+
         elif plot_type == "Corte Y-Z":
             with col1:
-                x_val = st.number_input("Valor de X (m)", 
-                                       min_value=float(X.min()), 
-                                       max_value=float(X.max()), 
-                                       value=0.0)
+                x_val = st.number_input("Valor de X (m)",
+                                        min_value=float(X.min()),
+                                        max_value=float(X.max()),
+                                        value=0.0)
             with col2:
                 if st.button("➕ Agregar gráfica"):
                     st.session_state.plots.append({'type': plot_type, 'x_val': x_val})
                     st.rerun()
-        
+
         elif plot_type == "Perfil en profundidad":
             with col1:
-                x_point = st.number_input("X (m)", 
-                                         min_value=float(X.min()), 
-                                         max_value=float(X.max()), 
-                                         value=0.0)
+                x_point = st.number_input("X (m)",
+                                          min_value=float(X.min()),
+                                          max_value=float(X.max()),
+                                          value=0.0)
             with col2:
-                y_point = st.number_input("Y (m)", 
-                                         min_value=float(Y.min()), 
-                                         max_value=float(Y.max()), 
-                                         value=0.0)
+                y_point = st.number_input("Y (m)",
+                                          min_value=float(Y.min()),
+                                          max_value=float(Y.max()),
+                                          value=0.0)
             with col3:
                 if st.button("➕ Agregar gráfica"):
                     st.session_state.plots.append({'type': plot_type, 'x_point': x_point, 'y_point': y_point})
                     st.rerun()
-        
+
         # Plot management buttons
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
@@ -368,26 +200,26 @@ def boussinesq_interface():
             if st.button("🧹 Limpiar todas") and len(st.session_state.plots) > 0:
                 st.session_state.plots = []
                 st.rerun()
-        
+
         st.markdown("---")
-        
+
         # Display all plots
         if st.session_state.plots:
             st.subheader(f"Gráficas ({len(st.session_state.plots)})")
-            
+
             for i, plot_cfg in enumerate(st.session_state.plots):
                 st.markdown(f"**Gráfica {i+1}: {plot_cfg['type']}**")
-                
+
                 if plot_cfg['type'] == "Corte X-Z":
                     fig = create_xz_plot(X, Y, Z, sigma, plot_cfg['y_val'])
                 elif plot_cfg['type'] == "Corte Y-Z":
                     fig = create_yz_plot(X, Y, Z, sigma, plot_cfg['x_val'])
                 elif plot_cfg['type'] == "Perfil en profundidad":
                     fig = create_depth_profile_plot(X, Y, Z, sigma, plot_cfg['x_point'], plot_cfg['y_point'])
-                
+
                 st.plotly_chart(fig, use_container_width=True)
                 st.markdown("---")
-            
+
             # PDF export
             if st.button("📄 Generar PDF"):
                 try:
@@ -416,14 +248,14 @@ def main():
 
     # Sidebar
     st.sidebar.title("🏗️ Geotechnical Tools")
-    
+
     # Add mode selector
     mode = st.sidebar.radio(
         "Seleccionar herramienta:",
         ["Análisis CSV", "Boussinesq (Esfuerzos Verticales)"],
         index=0
     )
-    
+
     if mode == "Boussinesq (Esfuerzos Verticales)":
         # Boussinesq interface
         boussinesq_interface()
