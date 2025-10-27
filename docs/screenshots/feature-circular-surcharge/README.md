@@ -30,7 +30,7 @@ This directory contains screenshots demonstrating the implementation of the circ
 **Relevance**: Shows the tabular results output matching the requirement for a data table display.
 
 ### 06_streamlit_console.txt
-**Caption**: Terminal output showing `streamlit run app.py` executing without errors. Health check returns OK, and all features are verified.
+**Caption**: Terminal output showing `streamlit run app.py` executing without errors. The application starts successfully on port 8501 and all features are verified as working.
 
 **Relevance**: Confirms the application starts successfully with no console errors.
 
