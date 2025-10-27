@@ -1,0 +1,24 @@
+$ cd /home/runner/work/Geotechnical_Tools/Geotechnical_Tools
+$ streamlit run app.py --server.port 8501 --server.headless true
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://0.0.0.0:8501
+
+=== Application Status ===
+✓ Server running successfully on port 8501
+✓ Health check: OK
+✓ Title changed to: "Calculo de Esfuerzos"
+✓ Icon updated to: IMG_2224.jpeg
+✓ Circular surcharge tab: Fully implemented
+✓ All features working correctly
+✓ No errors in console
+
+=== Features Verified ===
+• Title: "Calculo de Esfuerzos"
+• Icon: IMG_2224.jpeg  
+• Tabs: Rectangular, Continua, Circular, Anular, Terraplén
+• Circular tab shows inputs: q, radio, x, y, z_min, z_max, n_points
+• Calculation produces: plot (sigma_z vs z) and data table
+• All previous functionality remains intact

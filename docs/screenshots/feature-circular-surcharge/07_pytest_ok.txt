@@ -1,0 +1,41 @@
+$ python -m pytest tests/ -v
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.4.2, pluggy-1.6.0
+cachedir: .pytest_cache
+rootdir: /home/runner/work/Geotechnical_Tools/Geotechnical_Tools
+
+tests/test_app.py::test_imports PASSED                                   [  4%]
+tests/test_app.py::test_sample_csv_processing PASSED                     [  8%]
+tests/test_app.py::test_app_module_exists PASSED                         [ 12%]
+tests/test_calculations.py::test_get_cache_hash PASSED                   [ 16%]
+tests/test_calculations.py::test_get_cache_hash_format PASSED            [ 20%]
+tests/test_calculations.py::test_compute_boussinesq_cached PASSED        [ 24%]
+tests/test_calculations.py::test_interpolate_value PASSED                [ 28%]
+tests/test_calculations.py::test_interpolate_value_gradient PASSED       [ 32%]
+tests/test_calculations.py::test_create_xz_plot PASSED                   [ 36%]
+tests/test_calculations.py::test_create_yz_plot PASSED                   [ 40%]
+tests/test_calculations.py::test_create_depth_profile_plot PASSED        [ 44%]
+tests/test_calculations.py::test_generate_pdf_report PASSED              [ 48%]
+tests/test_calculations.py::test_generate_pdf_report_no_plots PASSED     [ 52%]
+tests/test_import.py::test_tools_import PASSED                           [ 56%]
+tests/test_import.py::test_tools_submodule_import PASSED                 [ 60%]
+tests/test_import.py::test_function_imports PASSED                       [ 64%]
+tests/test_tools.py::test_compute_rectangular_boussinesq_basic PASSED    [ 68%]
+tests/test_tools.py::test_compute_rectangular_boussinesq_zero_load PASSED [ 72%]
+tests/test_tools.py::test_compute_rectangular_boussinesq_invalid_inputs PASSED [ 76%]
+tests/test_tools.py::test_save_and_load_cache PASSED                     [ 80%]
+tests/test_tools.py::test_load_cache_nonexistent PASSED                  [ 84%]
+tests/test_tools.py::test_stress_symmetry PASSED                         [ 88%]
+tests/test_tools.py::test_calc_circular_surcharge_on_axis PASSED         [ 92%]
+tests/test_tools.py::test_calc_circular_surcharge_zero_load PASSED       [ 96%]
+tests/test_tools.py::test_calc_circular_surcharge_invalid_inputs PASSED  [100%]
+
+======================= 25 passed, 27 warnings in 1.32s ========================
+
+=== New Tests Added ===
+✓ test_calc_circular_surcharge_on_axis - Tests calculation on axis (r=0)
+✓ test_calc_circular_surcharge_zero_load - Tests zero load case
+✓ test_calc_circular_surcharge_invalid_inputs - Tests input validation
+
+All tests passing! ✓
