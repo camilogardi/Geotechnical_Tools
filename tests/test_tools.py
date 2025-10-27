@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import os
 import tempfile
-from Tools import compute_rectangular_boussinesq, save_cache, load_cache
+from Tools import compute_rectangular_boussinesq, save_cache, load_cache, calc_circular_surcharge
 
 
 def test_compute_rectangular_boussinesq_basic():
@@ -163,6 +163,64 @@ def test_stress_symmetry():
             stress_right = sigma[iz, center_y, center_x + 1]
             assert np.isclose(stress_left, stress_right, rtol=0.1), \
                 f"Symmetry violation in X at depth {iz}"
+
+
+def test_calc_circular_surcharge_on_axis():
+    """Test circular surcharge calculation on axis (r=0)"""
+    q = 100  # kPa
+    radius = 5  # m
+    x_center = 0  # m (on axis)
+    y_center = 0  # m (on axis)
+    z_values = np.linspace(0.1, 30, 50)
+    
+    z_result, sigma = calc_circular_surcharge(q, radius, x_center, y_center, z_values)
+    
+    # Check output shapes
+    assert z_result.shape == z_values.shape, "Z values shape mismatch"
+    assert sigma.shape == z_values.shape, "Sigma shape mismatch"
+    
+    # Check that stress is non-negative
+    assert np.all(sigma >= -1e-10), f"Stress should be non-negative, got min {sigma.min()}"
+    
+    # At surface (z→0), stress should approach q
+    assert sigma[0] > 0.9 * q, f"Near-surface stress should be close to q, got {sigma[0]} vs {q}"
+    
+    # Stress should decrease with depth
+    assert sigma[0] > sigma[-1], "Stress should decrease with depth"
+    
+    # At large depth, stress should approach zero
+    assert sigma[-1] < 0.1 * q, f"Deep stress should be small, got {sigma[-1]}"
+
+
+def test_calc_circular_surcharge_zero_load():
+    """Test that zero load gives zero stress"""
+    q = 0  # kPa
+    radius = 5  # m
+    x_center = 0
+    y_center = 0
+    z_values = np.linspace(0.1, 30, 20)
+    
+    z_result, sigma = calc_circular_surcharge(q, radius, x_center, y_center, z_values)
+    
+    assert np.allclose(sigma, 0), "Zero load should produce zero stress"
+
+
+def test_calc_circular_surcharge_invalid_inputs():
+    """Test that invalid inputs raise appropriate errors"""
+    z_values = np.linspace(0.1, 30, 20)
+    
+    # Negative load
+    with pytest.raises(ValueError, match="non-negative"):
+        calc_circular_surcharge(q=-10, radius=5, x_center=0, y_center=0, z_values=z_values)
+    
+    # Negative radius
+    with pytest.raises(ValueError, match="positive"):
+        calc_circular_surcharge(q=100, radius=-5, x_center=0, y_center=0, z_values=z_values)
+    
+    # Invalid depth values (<=0)
+    with pytest.raises(ValueError, match="positive"):
+        z_bad = np.array([-1, 0, 1, 2])
+        calc_circular_surcharge(q=100, radius=5, x_center=0, y_center=0, z_values=z_bad)
 
 
 if __name__ == "__main__":

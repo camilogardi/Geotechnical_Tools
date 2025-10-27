@@ -4,7 +4,7 @@ Aplicación para análisis de datos geotécnicos
 """
 
 import streamlit as st
-from Tools import save_cache, load_cache
+from Tools import save_cache, load_cache, calc_circular_surcharge
 from calculations import (
     get_cache_hash,
     compute_boussinesq_cached,
@@ -13,6 +13,9 @@ from calculations import (
     create_depth_profile_plot,
     generate_pdf_report
 )
+import plotly.graph_objects as go
+import pandas as pd
+import numpy as np
 
 
 def boussinesq_interface():
@@ -241,8 +244,141 @@ def esfuerzo_vertical_continua():
 
 
 def esfuerzo_vertical_circular():
-    """Placeholder for Esfuerzo Vertical Circular calculation"""
-    st.info("⚠️ En desarrollo — funciones pendientes")
+    """Interface for Esfuerzo Vertical Circular calculation"""
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("⚙️ Parámetros de Cálculo")
+
+    # Initialize session state
+    if 'circular_data' not in st.session_state:
+        st.session_state.circular_data = None
+
+    # Input parameters
+    with st.sidebar.expander("Parámetros de Carga Circular", expanded=True):
+        q = st.number_input("Sobrecarga q (kPa)", min_value=0.0, value=100.0, step=10.0)
+        radius = st.number_input("Radio (m)", min_value=0.1, value=5.0, step=0.5)
+
+    with st.sidebar.expander("Punto de Cálculo", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            x_point = st.number_input("X (m)", value=0.0, step=1.0)
+        with col2:
+            y_point = st.number_input("Y (m)", value=0.0, step=1.0)
+
+    with st.sidebar.expander("Rango de Profundidad", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            z_min = st.number_input("Z mínima (m)", min_value=0.1, value=0.1, step=0.1)
+            n_points = st.number_input("Número de puntos", min_value=10, max_value=200, value=50, step=10)
+        with col2:
+            z_max = st.number_input("Z máxima (m)", min_value=0.1, value=30.0, step=5.0)
+
+    # Calculation buttons
+    st.sidebar.markdown("---")
+    col1, col2 = st.sidebar.columns(2)
+
+    with col1:
+        if st.button("🔄 Calcular", use_container_width=True):
+            with st.spinner("Calculando esfuerzos circulares..."):
+                try:
+                    z_values = np.linspace(z_min, z_max, n_points)
+                    z_result, sigma_z = calc_circular_surcharge(q, radius, x_point, y_point, z_values)
+                    
+                    st.session_state.circular_data = {
+                        'z': z_result,
+                        'sigma_z': sigma_z,
+                        'params': {
+                            'q': q,
+                            'radius': radius,
+                            'x_point': x_point,
+                            'y_point': y_point,
+                            'z_min': z_min,
+                            'z_max': z_max,
+                            'n_points': n_points
+                        }
+                    }
+                    st.sidebar.success("✅ Cálculo completado")
+                except Exception as e:
+                    st.sidebar.error(f"❌ Error: {str(e)}")
+
+    with col2:
+        if st.button("🗑️ Limpiar", use_container_width=True):
+            st.session_state.circular_data = None
+            st.rerun()
+
+    # Main content area
+    if st.session_state.circular_data is not None:
+        data = st.session_state.circular_data
+        z = data['z']
+        sigma_z = data['sigma_z']
+        params = data['params']
+
+        st.header("📊 Resultados de Esfuerzo Vertical Circular")
+
+        # Summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("σz máximo", f"{sigma_z.max():.2f} kPa")
+        with col2:
+            st.metric("σz mínimo", f"{sigma_z.min():.2f} kPa")
+        with col3:
+            r = np.sqrt(params['x_point']**2 + params['y_point']**2)
+            st.metric("Distancia radial", f"{r:.2f} m")
+        with col4:
+            st.metric("Puntos calculados", f"{len(z):,}")
+
+        st.markdown("---")
+
+        # Plot: sigma_z vs z
+        st.subheader("📈 Gráfica: Esfuerzo Vertical vs Profundidad")
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=sigma_z,
+            y=z,
+            mode='lines+markers',
+            name='σz vs z',
+            line=dict(color='blue', width=2),
+            marker=dict(size=4)
+        ))
+        
+        fig.update_layout(
+            title=f'Esfuerzo Vertical a r={r:.2f}m del centro',
+            xaxis_title='σz (kPa)',
+            yaxis_title='Profundidad z (m)',
+            yaxis=dict(autorange='reversed'),  # Depth increases downward
+            height=500,
+            showlegend=True
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+
+        # Results table
+        st.subheader("📋 Tabla de Resultados")
+        
+        # Create DataFrame
+        df = pd.DataFrame({
+            'Profundidad z (m)': z,
+            'σz (kPa)': sigma_z
+        })
+        
+        # Format numbers
+        df['Profundidad z (m)'] = df['Profundidad z (m)'].map('{:.2f}'.format)
+        df['σz (kPa)'] = df['σz (kPa)'].map('{:.2f}'.format)
+        
+        st.dataframe(df, use_container_width=True, height=400)
+
+        # Download button for CSV
+        csv = df.to_csv(index=False)
+        st.download_button(
+            label="📥 Descargar CSV",
+            data=csv,
+            file_name="esfuerzo_circular.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("👈 Configure los parámetros y presione 'Calcular' para comenzar")
 
 
 def esfuerzo_vertical_anular():
@@ -258,13 +394,13 @@ def esfuerzo_vertical_terraplen():
 def main():
     """Main application function"""
     st.set_page_config(
-        page_title="Geotechnical Tools",
-        page_icon="🏗️",
+        page_title="Calculo de Esfuerzos",
+        page_icon="IMG_2224.jpeg",
         layout="wide"
     )
 
     # Sidebar
-    st.sidebar.title("🏗️ Geotechnical Tools")
+    st.sidebar.title("Calculo de Esfuerzos")
 
     # Add tab selector for different calculation types
     tab_selection = st.sidebar.radio(
